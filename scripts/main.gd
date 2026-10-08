@@ -11,6 +11,9 @@ var visuals: Node3D
 var camera_pivot: Node3D
 var animator: AnimationPlayer
 var run_clip := ""
+var idle_clip := ""
+var idle_pose: Animation
+var idle_ready := false
 var yaw := 0.0
 var pitch := -0.18
 var hud: Label
@@ -186,9 +189,17 @@ func _make_player() -> void:
 			animator = _find_animator(character)
 			if animator != null:
 				for animation_name in animator.get_animation_list():
+					if "idle" in String(animation_name).to_lower():
+						idle_clip = String(animation_name)
 					if "running" in String(animation_name).to_lower():
 						run_clip = String(animation_name)
-						break
+				if not idle_clip.is_empty():
+					animator.play(idle_clip)
+				elif not run_clip.is_empty():
+					# Use the animation start as a temporary neutral rest pose.
+					animator.play(run_clip)
+					animator.seek(0.0, true)
+					animator.pause()
 	else:
 		print("Meshy karakter dosyasi bulunamadi. Gecici test karakteri kullaniliyor.")
 		var body := MeshInstance3D.new()
@@ -263,7 +274,14 @@ func _physics_process(delta: float) -> void:
 			if animator.current_animation != run_clip or not animator.is_playing():
 				animator.play(run_clip)
 			animator.speed_scale = 1.1 if sprint else 0.65
-		elif animator.is_playing():
-			animator.stop()
+		else:
+			if not idle_clip.is_empty():
+				if animator.current_animation != idle_clip or not animator.is_playing():
+					animator.play(idle_clip, 0.2)
+			else:
+				# Do not freeze in a random running frame.
+				animator.play(run_clip)
+				animator.seek(0.0, true)
+				animator.pause()
 	camera_pivot.global_position = camera_pivot.global_position.lerp(player.global_position + Vector3(0, 1.5, 0), minf(delta * 8.0, 1.0))
 	_update_hud()
