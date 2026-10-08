@@ -1,6 +1,6 @@
 extends Node3D
 
-const MODEL_PATH := "res://assets/characters/base_adventurer_running.glb"
+const MODEL_PATH := "res://assets/characters/base_adventurer_running.glb"\nconst ALTERNATE_MODEL_PATH := "res://Meshy_AI_Game_ready_stylized_s_Running.glb"
 const WALK_SPEED := 4.0
 const RUN_SPEED := 7.0
 const GRAVITY := 18.0
@@ -74,12 +74,12 @@ func _make_player() -> void:
 			visuals.add_child(character)
 			animator = _find_animator(character)
 			if animator != null:
-				for name in animator.get_animation_list():
-					if "running" in String(name).to_lower():
-						run_clip = String(name)
+				for animation_name in animator.get_animation_list():
+					if "running" in String(animation_name).to_lower():
+						run_clip = String(animation_name)
 						break
 	else:
-		push_warning("Meshy GLB bulunamadi: " + MODEL_PATH)
+		print("Meshy karakter dosyasi bulunamadi. Gecici test karakteri kullaniliyor.")
 		var body := MeshInstance3D.new()
 		var fallback := CapsuleMesh.new()
 		fallback.radius = 0.35
