@@ -1,6 +1,7 @@
 extends Node3D
 
-const MODEL_PATH := "res://assets/characters/base_adventurer_running.glb"\nconst ALTERNATE_MODEL_PATH := "res://Meshy_AI_Game_ready_stylized_s_Running.glb"
+const MODEL_PATH := "res://assets/characters/base_adventurer_running.glb"
+const ALTERNATE_MODEL_PATH := "res://Meshy_AI_Game_ready_stylized_s_Running.glb"
 const WALK_SPEED := 4.0
 const RUN_SPEED := 7.0
 const GRAVITY := 18.0
