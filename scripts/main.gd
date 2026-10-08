@@ -13,11 +13,19 @@ var animator: AnimationPlayer
 var run_clip := ""
 var yaw := 0.0
 var pitch := -0.18
+var hud: Label
+var resource_nodes: Array[Node3D] = []
+var wood := 0
+var stone := 0
+var stamina := 100.0
+var camera_distance := 5.0
 
 func _ready() -> void:
 	_make_world()
 	_make_player()
 	_make_camera()
+	_make_camp()
+	_make_hud()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _make_world() -> void:
@@ -52,6 +60,108 @@ func _make_world() -> void:
 	collider.shape = shape
 	collider.position.y = -0.2
 	ground.add_child(collider)
+
+func _add_primitive(parent: Node3D, shape_mesh: Mesh, pos: Vector3, tint: Color) -> MeshInstance3D:
+	var item := MeshInstance3D.new()
+	item.mesh = shape_mesh
+	item.position = pos
+	var material := StandardMaterial3D.new()
+	material.albedo_color = tint
+	item.material_override = material
+	parent.add_child(item)
+	return item
+
+func _make_camp() -> void:
+	# Lightweight test environment suitable for Compatibility renderer.
+	for i in range(16):
+		var angle := float(i) * TAU / 16.0
+		var distance := 9.0 + float(i % 4) * 3.5
+		var pos := Vector3(cos(angle) * distance, 0.0, sin(angle) * distance)
+		var tree := Node3D.new()
+		tree.name = "Tree_%02d" % i
+		tree.position = pos
+		add_child(tree)
+		var trunk := CylinderMesh.new()
+		trunk.top_radius = 0.22
+		trunk.bottom_radius = 0.33
+		trunk.height = 2.4
+		_add_primitive(tree, trunk, Vector3(0, 1.2, 0), Color(0.36, 0.23, 0.13))
+		var crown := SphereMesh.new()
+		crown.radius = 1.35
+		crown.height = 2.5
+		_add_primitive(tree, crown, Vector3(0, 3.1, 0), Color(0.15, 0.34 + 0.02 * (i % 3), 0.17))
+		tree.set_meta("resource_type", "wood")
+		resource_nodes.append(tree)
+	for i in range(12):
+		var angle := float(i) * TAU / 12.0 + 0.23
+		var distance := 5.5 + float(i % 3) * 4.0
+		var rock := Node3D.new()
+		rock.name = "Rock_%02d" % i
+		rock.position = Vector3(cos(angle) * distance, 0, sin(angle) * distance)
+		add_child(rock)
+		var rock_mesh := SphereMesh.new()
+		rock_mesh.radius = 0.65
+		rock_mesh.height = 0.9
+		_add_primitive(rock, rock_mesh, Vector3(0, 0.35, 0), Color(0.40, 0.43, 0.43))
+		rock.set_meta("resource_type", "stone")
+		resource_nodes.append(rock)
+	var camp := Node3D.new()
+	camp.name = "Camp"
+	camp.position = Vector3(3, 0, 2)
+	add_child(camp)
+	var pit := CylinderMesh.new()
+	pit.top_radius = 0.85
+	pit.bottom_radius = 0.85
+	pit.height = 0.2
+	_add_primitive(camp, pit, Vector3(0, 0.1, 0), Color(0.22, 0.2, 0.19))
+	var ember := SphereMesh.new()
+	ember.radius = 0.4
+	ember.height = 0.4
+	_add_primitive(camp, ember, Vector3(0, 0.25, 0), Color(0.98, 0.41, 0.09))
+
+func _make_hud() -> void:
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	hud = Label.new()
+	hud.position = Vector2(20, 20)
+	hud.add_theme_font_size_override("font_size", 19)
+	hud.add_theme_color_override("font_color", Color.WHITE)
+	hud.add_theme_color_override("font_shadow_color", Color.BLACK)
+	hud.add_theme_constant_override("shadow_offset_x", 1)
+	hud.add_theme_constant_override("shadow_offset_y", 2)
+	layer.add_child(hud)
+	_update_hud()
+
+func _update_hud() -> void:
+	var nearby := _nearest_resource()
+	var hint := ""
+	if nearby != null:
+		hint = " | E: %s topla" % ("Odun" if String(nearby.get_meta("resource_type")) == "wood" else "Tas")
+	hud.text = "ASHVALE - KESIF TESTI\nOdun: %d   Tas: %d   Dayaniklilik: %d\nWASD: hareket  Shift: kos  Space: zipla  ESC: fare\nFare tekerlegi: kamera%s" % [wood, stone, int(stamina), hint]
+
+func _nearest_resource() -> Node3D:
+	var best: Node3D = null
+	var best_distance := 3.0
+	for node in resource_nodes:
+		if not is_instance_valid(node):
+			continue
+		var distance := player.global_position.distance_to(node.global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = node
+	return best
+
+func _collect_resource() -> void:
+	var target := _nearest_resource()
+	if target == null:
+		return
+	if String(target.get_meta("resource_type")) == "wood":
+		wood += 1
+	else:
+		stone += 1
+	resource_nodes.erase(target)
+	target.queue_free()
+	_update_hud()
 
 func _make_player() -> void:
 	player = CharacterBody3D.new()
@@ -111,6 +221,8 @@ func _make_camera() -> void:
 	camera_pivot.add_child(camera)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+		_collect_resource()
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -120,6 +232,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		yaw -= event.relative.x * 0.003
 		pitch = clampf(pitch - event.relative.y * 0.003, -0.8, 0.35)
 		camera_pivot.rotation = Vector3(pitch, yaw, 0)
+	elif event is InputEventMouseButton and event.pressed and (event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		camera_distance = clampf(camera_distance + (-0.5 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.5), 2.5, 8.5)
+		camera_pivot.get_node("Camera").position.z = camera_distance
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -129,7 +244,8 @@ func _physics_process(delta: float) -> void:
 		float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W))
 	).normalized()
 	var direction := Basis(Vector3.UP, yaw) * Vector3(input.x, 0, input.y)
-	var sprint := Input.is_physical_key_pressed(KEY_SHIFT)
+	var sprint := Input.is_physical_key_pressed(KEY_SHIFT) and stamina > 1.0 and input.length_squared() > 0.01
+	stamina = clampf(stamina + (-22.0 if sprint else 16.0) * delta, 0.0, 100.0)
 	var speed := RUN_SPEED if sprint else WALK_SPEED
 	player.velocity.x = direction.x * speed
 	player.velocity.z = direction.z * speed
@@ -150,3 +266,4 @@ func _physics_process(delta: float) -> void:
 		elif animator.is_playing():
 			animator.stop()
 	camera_pivot.global_position = camera_pivot.global_position.lerp(player.global_position + Vector3(0, 1.5, 0), minf(delta * 8.0, 1.0))
+	_update_hud()
