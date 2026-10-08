@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dwtv3jjr2tigu"
-path="res://.godot/imported/base_adventurer_running.glb-2aa5c6b97849e15f3d1479261580c385.scn"
+path="res://.godot/imported/base_adventurer_running.glb-8bab00f1a19184e6c6f715f59b1513cc.scn"
 
 [deps]
 
-source_file="res://base_adventurer_running.glb"
-dest_files=["res://.godot/imported/base_adventurer_running.glb-2aa5c6b97849e15f3d1479261580c385.scn"]
+source_file="res://assets/characters/base_adventurer_running.glb"
+dest_files=["res://.godot/imported/base_adventurer_running.glb-8bab00f1a19184e6c6f715f59b1513cc.scn"]
 
 [params]
 
